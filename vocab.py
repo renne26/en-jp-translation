@@ -1,4 +1,5 @@
 import pandas
+from tqdm import tqdm
 
 class Vocab:
   def __init__(self, name, tokenizer):
@@ -38,9 +39,11 @@ def read_data(lang1, lang2, tokenizer1, tokenizer2):
 def prepare_data(lang1, lang2, tokenizer1, tokenizer2):
   input_vocab, output_vocab, pairs = read_data(lang1, lang2, tokenizer1, tokenizer2)
 
-  for pair in pairs:
-    input_vocab.addSentence(pair[0])
-    output_vocab.addSentence(pair[1])
+  with tqdm(total=len(pairs), desc='Building Vocab') as progress_bar:
+    for pair in pairs:
+      input_vocab.addSentence(pair[0])
+      output_vocab.addSentence(pair[1])
+      progress_bar.update(1)
   
   print("Counted words:")
   print(input_vocab.name, input_vocab.n_words)

@@ -22,7 +22,7 @@ SOS_TOKEN = 0
 EOS_TOKEN = 1
 
 HIDDEN_SIZE = 128
-BATCH_SIZE = 32
+BATCH_SIZE = 512
 EPOCHS = 80
 
 ja_text = "スリバン人です"
@@ -66,22 +66,24 @@ def get_dataloader(batch_size):
 def train_epoch(dataloader, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion):
   total_loss = 0
 
-  for data in dataloader:
-    input_tensor, target_tensor = data
+  with tqdm(total=len(dataloader), desc='Training') as progress_bar:
+    for data in dataloader:
+      input_tensor, target_tensor = data
 
-    encoder_optimizer.zero_grad()
-    decoder_optimizer.zero_grad()
+      encoder_optimizer.zero_grad()
+      decoder_optimizer.zero_grad()
 
-    encoder_outputs, encoder_hidden = encoder(input_tensor)
-    decoder_outputs, _, _ = decoder(encoder_outputs, encoder_hidden, target_tensor)
+      encoder_outputs, encoder_hidden = encoder(input_tensor)
+      decoder_outputs, _, _ = decoder(encoder_outputs, encoder_hidden, target_tensor)
 
-    loss = criterion(decoder_outputs.view(-1, decoder_outputs.size(-1)), target_tensor.view(-1))
-    loss.backward()
+      loss = criterion(decoder_outputs.view(-1, decoder_outputs.size(-1)), target_tensor.view(-1))
+      loss.backward()
 
-    encoder_optimizer.step()
-    decoder_optimizer.step()
+      encoder_optimizer.step()
+      decoder_optimizer.step()
 
-    total_loss += loss.item()
+      total_loss += loss.item()
+      progress_bar.update(1)
   
   return total_loss / len(dataloader)
 
