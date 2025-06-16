@@ -3,8 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-MAX_LENGTH = 10
-
 class EncoderRNN(nn.Module):
   def __init__(self, input_size, hidden_size, dropout_p=0.1):
     super(EncoderRNN, self).__init__()
@@ -20,12 +18,13 @@ class EncoderRNN(nn.Module):
     return output, hidden
 
 class DecoderRNN(nn.Module):
-  def __init__(self, hidden_size, output_size, SOS_token):
+  def __init__(self, hidden_size, output_size, SOS_token, max_length):
     super(DecoderRNN, self).__init__()
     self.embedding = nn.Embedding(output_size, hidden_size)
     self.gru = nn.GRU(hidden_size, hidden_size, batch_first=True)
     self.out = nn.Linear(hidden_size, output_size)
     self.SOS_token = SOS_token
+    self.max_length = max_length
   
   def forward(self, encoder_outputs, encoder_hidden, target_tensor=None):
     batch_size = encoder_outputs.size(0)
@@ -33,7 +32,7 @@ class DecoderRNN(nn.Module):
     decoder_hidden = encoder_hidden
     decoder_outputs = []
 
-    for i in range(MAX_LENGTH):
+    for i in range(self.max_length):
       decoder_output, decoder_hidden  = self.forward_step(decoder_input, decoder_hidden)
       decoder_outputs.append(decoder_output)
 
@@ -71,7 +70,7 @@ class BahdanauAttention(nn.Module):
     return context, weights
   
 class AttnDecoderRNN(nn.Module):
-  def __init__(self, hidden_size, output_size, SOS_token, dropout_p=0.1):
+  def __init__(self, hidden_size, output_size, SOS_token, max_length, dropout_p=0.1):
     super(AttnDecoderRNN, self).__init__()
     self.embedding = nn.Embedding(output_size, hidden_size)
     self.attention = BahdanauAttention(hidden_size)
@@ -79,6 +78,7 @@ class AttnDecoderRNN(nn.Module):
     self.out = nn.Linear(hidden_size, output_size)
     self.dropout = nn.Dropout(dropout_p)
     self.SOS_token = SOS_token
+    self.max_length = max_length
   
   def forward(self, encoder_outputs, encoder_hidden, target_tensor=None):
     batch_size = encoder_outputs.size(0)
@@ -87,7 +87,7 @@ class AttnDecoderRNN(nn.Module):
     decoder_outputs = []
     attentions = []
 
-    for i in range(MAX_LENGTH):
+    for i in range(self.max_length):
       decoder_output, decoder_hidden, attn_weights = self.forward_step(decoder_input, decoder_hidden, encoder_outputs)
       decoder_outputs.append(decoder_output)
       attentions.append(attn_weights)
