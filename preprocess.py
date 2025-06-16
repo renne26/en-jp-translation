@@ -4,6 +4,8 @@ from tqdm import tqdm
 import shutil
 
 def download(type):
+  block_size = 1024
+
   if (type == 'Data'):
     url = 'https://nlp.stanford.edu/projects/jesc/data/split.tar.gz'
     file_name = './Data/data.tar.gz'
@@ -13,8 +15,8 @@ def download(type):
       response = requests.get(url)
       total_size = int(response.headers.get('content-length', 0))
 
-      with tqdm(total=total_size, unit='kB', desc='Downloading') as progress_bar:
-        for data in response.iter_content(chunk_size=1024):
+      with tqdm(total=total_size, unit='B', unit_scale=True, desc='Downloading Dataset') as progress_bar:
+        for data in response.iter_content(chunk_size=block_size):
           progress_bar.update(len(data))
           file.write(data)
 
@@ -30,8 +32,8 @@ def download(type):
       response = requests.get(url)
       total_size = int(response.headers.get('content-length', 0))
 
-      with tqdm(total=total_size, unit='kB', desc='Downloading') as progress_bar:
-        for data in response.iter_content(chunk_size=1024):
+      with tqdm(total=total_size, unit='B', unit_scale=True, desc='Downloading Font') as progress_bar:
+        for data in response.iter_content(chunk_size=block_size):
           progress_bar.update(len(data))
           file.write(data)
 
@@ -49,5 +51,3 @@ def preprocess():
   if (len(os.listdir('./Data')) == 0):
     download('Data')
   else: print('Skipping download of data files')
-
-preprocess()

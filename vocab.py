@@ -42,7 +42,7 @@ def read_data(lang1, lang2, tokenizer1, tokenizer2):
 
     with pandas.read_csv(f'./Data/split/{dataset}', sep='\t', header=None, names=['english', 'japanese'], chunksize=10000, quoting=3) as reader:
       for i, data in enumerate(reader):
-        print(f'Building pairs for chunk {i + 1}')
+        print(f'{dataset}: Building pairs for chunk {i + 1}')
         pairs = pairs + data.to_numpy().tolist()
 
       print()

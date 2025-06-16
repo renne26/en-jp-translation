@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class EncoderRNN(nn.Module):
   def __init__(self, input_size, hidden_size, dropout_p=0.1):
@@ -18,17 +17,18 @@ class EncoderRNN(nn.Module):
     return output, hidden
 
 class DecoderRNN(nn.Module):
-  def __init__(self, hidden_size, output_size, SOS_token, max_length):
+  def __init__(self, hidden_size, output_size, SOS_token, max_length, device):
     super(DecoderRNN, self).__init__()
     self.embedding = nn.Embedding(output_size, hidden_size)
     self.gru = nn.GRU(hidden_size, hidden_size, batch_first=True)
     self.out = nn.Linear(hidden_size, output_size)
     self.SOS_token = SOS_token
     self.max_length = max_length
+    self.device = device
   
   def forward(self, encoder_outputs, encoder_hidden, target_tensor=None):
     batch_size = encoder_outputs.size(0)
-    decoder_input = torch.empty(batch_size, 1, dtype=torch.long, device=device).fill_(self.SOS_token)
+    decoder_input = torch.empty(batch_size, 1, dtype=torch.long, device=self.device).fill_(self.SOS_token)
     decoder_hidden = encoder_hidden
     decoder_outputs = []
 
@@ -70,7 +70,7 @@ class BahdanauAttention(nn.Module):
     return context, weights
   
 class AttnDecoderRNN(nn.Module):
-  def __init__(self, hidden_size, output_size, SOS_token, max_length, dropout_p=0.1):
+  def __init__(self, hidden_size, output_size, SOS_token, max_length, device, dropout_p=0.1):
     super(AttnDecoderRNN, self).__init__()
     self.embedding = nn.Embedding(output_size, hidden_size)
     self.attention = BahdanauAttention(hidden_size)
@@ -79,10 +79,11 @@ class AttnDecoderRNN(nn.Module):
     self.dropout = nn.Dropout(dropout_p)
     self.SOS_token = SOS_token
     self.max_length = max_length
+    self.device = device
   
   def forward(self, encoder_outputs, encoder_hidden, target_tensor=None):
     batch_size = encoder_outputs.size(0)
-    decoder_input = torch.empty(batch_size, 1, dtype=torch.long, device=device).fill_(self.SOS_token)
+    decoder_input = torch.empty(batch_size, 1, dtype=torch.long, device=self.device).fill_(self.SOS_token)
     decoder_hidden = encoder_hidden
     decoder_outputs = []
     attentions = []

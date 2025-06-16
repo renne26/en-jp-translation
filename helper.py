@@ -136,3 +136,24 @@ def showAttention(input_sentence, output_words, attentions, file_name, dataloade
 
   plt.savefig(f'./Plots/{dataloaderType}/{file_name}')
   plt.close()
+
+def decodePairs(inputPair, targetPair, input_vocab, output_vocab, unk_token, eos_token):
+  decoded_inputPair = []
+  decoded_targetPair = []
+
+  for pair, decoded_words, vocab in zip([inputPair, targetPair], [decoded_inputPair, decoded_targetPair], [input_vocab, output_vocab]):
+    for idx in pair:
+      if idx.item() == unk_token:
+        decoded_words.append('<UNK>')
+
+      elif idx.item() == eos_token:
+        decoded_words.append('<EOS>')
+        break
+
+      else:
+        decoded_words.append(vocab.index2word[idx.item()])
+
+  input_sentence = ' '.join(decoded_inputPair)
+  target_sentence = ' '.join(decoded_targetPair)
+
+  return input_sentence, target_sentence
