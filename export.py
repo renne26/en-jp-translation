@@ -6,6 +6,28 @@ import onnxruntime
 import numpy as np
 from helper import decodePairs
 
+def indexesFromSentence(input_vocab, sentence, max_length):
+  doc = input_vocab.tokenizer(sentence)
+  tokenList = [input_vocab.getIndex(str(word)) for word in doc]
+  tokenList = tokenList[:(max_length - 1)]
+
+  return tokenList
+
+def decodeOutput(output_vocab, decoded_ids, unk_token, eos_token):
+  decoded_words = []
+  for idx in decoded_ids:
+    if idx.item() == unk_token:
+      decoded_words.append('<UNK>')
+    
+    elif idx.item() == eos_token:
+      decoded_words.append('<EOS>')
+      break
+
+    else:
+      decoded_words.append(output_vocab.index2word[idx.item()])
+  
+  return decoded_words
+
 class Model(nn.Module):
   def __init__(self, encoder, decoder, input_vocab, output_vocab, max_length, eos_token, unk_token):
     super(Model, self).__init__()
@@ -16,56 +38,14 @@ class Model(nn.Module):
     self.unk_token = unk_token
     self.eos_token = eos_token
     self.max_length = max_length
-  
-  def topk(self, array, k, axis=-1, sorted=True):
-    partitioned_ind = (np.argpartition(array, -k, axis=axis).take(indices=range(-k, 0), axis=axis))
-    partitioned_scores = np.take_along_axis(array, partitioned_ind, axis=axis)
-
-    if sorted:
-      sorted_trunc_ind = np.flip(np.argsort(partitioned_scores, axis=axis), axis=axis)
-      ind = np.take_along_axis(partitioned_ind, sorted_trunc_ind, axis=axis)
-      scores = np.take_along_axis(partitioned_scores, sorted_trunc_ind, axis=axis)
-    else:
-      ind = partitioned_ind
-      scores = partitioned_scores
-
-    return scores, ind
-
-  def indexesFromSentence(self, input_vocab, sentence):
-    doc = input_vocab.tokenizer(sentence)
-    tokenList = [input_vocab.getIndex(str(word)) for word in doc]
-    tokenList = tokenList[:(self.max_length - 1)]
-
-    return tokenList
-  
-  def tensorFromSentence(self, input_vocab, sentence, eos_token):
-    indexes = self.indexesFromSentence(input_vocab, sentence)
-    indexes.append(eos_token)
-    return torch.tensor(indexes, dtype=torch.long).view(1, -1)
-
-  def decodeOutput(self, decoder_outputs):
-    _, topi = self.topk(decoder_outputs, 1)
-    decoded_ids = topi.squeeze()
-
-    decoded_words = []
-    for idx in decoded_ids:
-      if idx.item() == self.unk_token:
-        decoded_words.append('<UNK>')
-      
-      elif idx.item() == self.eos_token:
-        decoded_words.append('<EOS>')
-        break
-
-      else:
-        decoded_words.append(self.output_vocab.index2word[idx.item()])
-    
-    return decoded_words
 
   def forward(self, input_tensor):
     encoder_outputs, encoder_hidden = self.encoder(input_tensor.view(1, -1))
     decoder_outputs, decoder_hidden, decoder_attn = self.decoder(encoder_outputs, encoder_hidden)
+    _, topi = decoder_outputs.topk(1)
+    decoded_ids = topi.squeeze()
 
-    return decoder_outputs
+    return decoded_ids
 
 def exportModel(encoder, decoder, input_vocab, output_vocab, max_length, eos_token, unk_token, testLoader):
   if not os.path.exists(f'./Models/'):
@@ -81,6 +61,7 @@ def exportModel(encoder, decoder, input_vocab, output_vocab, max_length, eos_tok
 
   onnx_program.save('./Models/en_jp_translation_model.onnx')
 
+  print('Loading model to validate predictions')
   onnx_model = onnx.load('./Models/en_jp_translation_model.onnx')
   onnx.checker.check_model(onnx_model)
 
@@ -95,5 +76,16 @@ def exportModel(encoder, decoder, input_vocab, output_vocab, max_length, eos_tok
   torch_outputs = model(pair[0].cpu())
 
   print(len(torch_outputs) == len(onnx_outputs))
-  print(f'Torch outputs: {onnx_model.decodeOutput(torch_outputs.detach().numpy())}')
-  print(f'ONNX outputs: {onnx_model.decodeOutput(onnx_outputs)}')
+  print(f'Torch outputs: {decodeOutput(output_vocab, torch_outputs.detach().numpy(), unk_token, eos_token)}')
+  print(f'ONNX outputs: {decodeOutput(output_vocab, onnx_outputs, unk_token, eos_token)}')
+  print()
+
+  print('Testing prediction from raw text')
+  text = 'Hello World'
+  print(f'Raw Text: {text}')
+  onnx_input = np.zeros(max_length, dtype=np.int64)
+  onnx_input_ids = indexesFromSentence(input_vocab, text, max_length)
+  onnx_input_ids.append(eos_token)
+  onnx_input[:len(onnx_input_ids)] = onnx_input_ids
+  onnx_outputs = ort_session.run(None, {'Input': np.array(onnx_input)})[0]
+  print(f'Output: {decodeOutput(output_vocab, onnx_outputs, unk_token, eos_token)}')

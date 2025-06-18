@@ -91,6 +91,10 @@ def train(n_epochs, batch_size, hidden_size, learning_rate, plot_every, max_leng
     print()
   
   showPlot(plot_losses)
+  checkpoint = torch.load(f'./Checkpoints/model_{hidden_size}_{batch_size}_{learning_rate}_{max_length}')
+  encoder.load_state_dict(checkpoint['encoder_state_dict'])
+  decoder.load_state_dict(checkpoint['decoder_state_dict'])
+  
   return encoder, decoder, criterion, input_vocab, output_vocab, dataloaders
 
 def predict(encoder, decoder, input_tensor, output_vocab, eos_token, unk_token):
