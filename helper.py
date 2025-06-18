@@ -29,11 +29,6 @@ def indexesFromSentence(vocab, sentence, max_length):
   
   return tokenList
 
-def tensorFromSentence(vocab, sentence, max_length, eos_token):
-  indexes = indexesFromSentence(vocab, sentence, max_length)
-  indexes.append(eos_token)
-  return torch.tensor(indexes, dtype=torch.long, device=device).view(1, -1)
-
 def get_dataloader(batch_size, max_length, eos_token):
   dataloaders = {}
   input_vocab, output_vocab, datasets = prepare_data('english', 'japanese', English(), Japanese())
@@ -54,8 +49,8 @@ def get_dataloader(batch_size, max_length, eos_token):
     else:
       dataset = datasets[datasetType]
       n = len(dataset)
-      input_ids = np.zeros((n, max_length), dtype=np.uint64)
-      target_ids = np.zeros((n, max_length), dtype=np.uint64)
+      input_ids = np.zeros((n, max_length), dtype=np.int64)
+      target_ids = np.zeros((n, max_length), dtype=np.int64)
 
       with tqdm(total=n, desc=f'Indexing Pairs for {datasetType} set') as progress_bar:
         for idx, (inp, tgt) in enumerate(dataset):
