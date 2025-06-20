@@ -25,4 +25,5 @@ if __name__ == '__main__':
     decoder.eval()
     evaluate(encoder, decoder, criterion, input_vocab, output_vocab, EOS_TOKEN, UNK_TOKEN, dataloaders['test'], 'test', True)
 
+    print('Starting export pipeline')
     exportModel(encoder.cpu(), decoder.cpu(), input_vocab, output_vocab, MAX_LENGTH, EOS_TOKEN, UNK_TOKEN, dataloaders['test'])
