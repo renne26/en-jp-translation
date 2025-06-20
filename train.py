@@ -53,8 +53,9 @@ def train(n_epochs, batch_size, hidden_size, learning_rate, plot_every, max_leng
   
   if not os.path.exists('./Checkpoints'):
     os.makedirs('Checkpoints')
+    
   elif (trainCheckpoint == True and os.path.isfile(f'./Checkpoints/model_{hidden_size}_{batch_size}_{learning_rate}_{max_length}')):
-    checkpoint = torch.load(f'./Checkpoints/model_{hidden_size}_{batch_size}_{learning_rate}_{max_length}')
+    checkpoint = torch.load(f'./Checkpoints/model_{hidden_size}_{batch_size}_{learning_rate}_{max_length}.pt')
     encoder.load_state_dict(checkpoint['encoder_state_dict'])
     decoder.load_state_dict(checkpoint['decoder_state_dict'])
     encoder_optimizer.load_state_dict(checkpoint['encoder_optimizer_state_dict'])
@@ -66,34 +67,43 @@ def train(n_epochs, batch_size, hidden_size, learning_rate, plot_every, max_leng
     print(f'Continuing from epoch: {epoch_start}')
     print(f'Best Dev loss: {best_dev_loss}')
   
+  else:
+    print('Checkpoint not found, starting training loop from scratch')
+  
   start = time.time()
   
   for epoch in range(epoch_start, n_epochs + 1):
     train_epoch(dataloaders['train'], encoder, decoder, encoder_optimizer, decoder_optimizer, criterion)
 
-    dev_loss = evaluate(encoder, decoder, criterion, input_vocab, output_vocab, eos_token, unk_token, dataloaders['dev'], 'Dev', epoch % plot_every == 0, 3)
-
+    dev_loss = evaluate(encoder, decoder, criterion, input_vocab, output_vocab, eos_token, unk_token, dataloaders['dev'], 'Dev', epoch, epoch % plot_every == 0, 3)
     plot_losses.append(dev_loss)
+
+    torch.save({
+      'epoch': epoch,
+      'encoder_state_dict': encoder.state_dict(),
+      'decoder_state_dict': decoder.state_dict(),
+      'encoder_optimizer_state_dict': encoder_optimizer.state_dict(),
+      'decoder_optimizer_state_dict': decoder_optimizer.state_dict(),
+      'scaler_state_dict': scaler.state_dict(),
+      'dev_loss': dev_loss,
+      'plot_losses': plot_losses
+    }, f'./Checkpoints/model_{hidden_size}_{batch_size}_{learning_rate}_{max_length}.pt')
+
     if (dev_loss < best_dev_loss):
+      print(f'Best model saved at epoch: {epoch}')
       best_dev_loss = dev_loss
       torch.save({
-        'epoch': epoch,
         'encoder_state_dict': encoder.state_dict(),
-        'decoder_state_dict': decoder.state_dict(),
-        'encoder_optimizer_state_dict': encoder_optimizer.state_dict(),
-        'decoder_optimizer_state_dict': decoder_optimizer.state_dict(),
-        'scaler_state_dict': scaler.state_dict(),
-        'dev_loss': dev_loss,
-        'plot_losses': plot_losses
-      }, f'./Checkpoints/model_{hidden_size}_{batch_size}_{learning_rate}_{max_length}')
+        'decoder_state_dict': decoder.state_dict()
+      }, f'./Checkpoints/best_model_{hidden_size}_{batch_size}_{learning_rate}_{max_length}.pt')
 
     print(f'{timeSince(start, epoch / n_epochs)} Epoch: {epoch} / {n_epochs} ({epoch / n_epochs * 100}%) Dev Loss: {dev_loss} Best Dev Loss: {best_dev_loss}')
     print()
   
   showPlot(plot_losses)
-  checkpoint = torch.load(f'./Checkpoints/model_{hidden_size}_{batch_size}_{learning_rate}_{max_length}')
-  encoder.load_state_dict(checkpoint['encoder_state_dict'])
-  decoder.load_state_dict(checkpoint['decoder_state_dict'])
+  best_checkpoint = torch.load(f'./Checkpoints/best_model_{hidden_size}_{batch_size}_{learning_rate}_{max_length}.pt')
+  encoder.load_state_dict(best_checkpoint['encoder_state_dict'])
+  decoder.load_state_dict(best_checkpoint['decoder_state_dict'])
   
   return encoder, decoder, criterion, input_vocab, output_vocab, dataloaders
 
@@ -120,7 +130,7 @@ def predict(encoder, decoder, input_tensor, output_vocab, eos_token, unk_token):
   del encoder_outputs, encoder_hidden, decoder_outputs, decoder_hidden
   return decoded_words, decoder_attn
 
-def evaluate(encoder, decoder, criterion, input_vocab, output_vocab, eos_token, unk_token, dataloader, dataloaderType, plot, n=10):
+def evaluate(encoder, decoder, criterion, input_vocab, output_vocab, eos_token, unk_token, dataloader, dataloaderType, epoch, plot, n=10):
   dev_loss = 0
   encoder.eval()
   decoder.eval()
@@ -151,7 +161,7 @@ def evaluate(encoder, decoder, criterion, input_vocab, output_vocab, eos_token, 
       print(f'Output: {output_sentence}')
       print(f'Target: {target_sentence}')
       print()
-      showAttention(input_sentence, output_words, attention[0, :len(output_words), :], f'attn_plot_{i + 1}', dataloaderType)
+      showAttention(input_sentence, output_words, attention[0, :len(output_words), :], f'attn_plot_{i + 1}', dataloaderType, epoch)
       del attention
   
   return dev_loss
