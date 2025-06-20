@@ -107,12 +107,12 @@ def showPlot(points):
   plt.savefig('./plots/loss/loss_plot.png')
   plt.close()
 
-def showAttention(input_sentence, output_words, attentions, file_name, dataloaderType):
+def showAttention(input_sentence, output_words, attentions, file_name, dataloaderType, epoch):
   if not os.path.exists('./Plots'):
     os.makedirs('Plots')
   
-  if not os.path.exists(f'./Plots/{dataloaderType}'):
-    os.makedirs(f'./Plots/{dataloaderType}')
+  if not os.path.exists(f'./Plots/{dataloaderType}/{epoch}'):
+    os.makedirs(f'./Plots/{dataloaderType}/{epoch}')
 
   fig = plt.figure(figsize=(5, 5))
   ax = fig.add_subplot(111)
@@ -129,7 +129,7 @@ def showAttention(input_sentence, output_words, attentions, file_name, dataloade
   ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
   ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
 
-  plt.savefig(f'./Plots/{dataloaderType}/{file_name}')
+  plt.savefig(f'./Plots/{dataloaderType}/{epoch}/{file_name}')
   plt.close()
 
 def decodePairs(inputPair, targetPair, input_vocab, output_vocab, unk_token, eos_token):
