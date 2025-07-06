@@ -50,12 +50,13 @@ def train(n_epochs, batch_size, hidden_size, learning_rate, plot_every, max_leng
   encoder_optimizer = optim.AdamW(encoder.parameters(), lr=learning_rate)
   decoder_optimizer = optim.AdamW(decoder.parameters(), lr=learning_rate)
   criterion = nn.NLLLoss()
+  checkpointLocation = f'./Checkpoints/model_{hidden_size}_{batch_size}_{learning_rate}_{max_length}.pt'
   
   if not os.path.exists('./Checkpoints'):
     os.makedirs('Checkpoints')
     
-  elif (trainCheckpoint == True and os.path.isfile(f'./Checkpoints/model_{hidden_size}_{batch_size}_{learning_rate}_{max_length}')):
-    checkpoint = torch.load(f'./Checkpoints/model_{hidden_size}_{batch_size}_{learning_rate}_{max_length}.pt')
+  elif (trainCheckpoint == True and os.path.isfile(checkpointLocation)):
+    checkpoint = torch.load(checkpointLocation)
     encoder.load_state_dict(checkpoint['encoder_state_dict'])
     decoder.load_state_dict(checkpoint['decoder_state_dict'])
     encoder_optimizer.load_state_dict(checkpoint['encoder_optimizer_state_dict'])
@@ -87,7 +88,7 @@ def train(n_epochs, batch_size, hidden_size, learning_rate, plot_every, max_leng
       'scaler_state_dict': scaler.state_dict(),
       'dev_loss': dev_loss,
       'plot_losses': plot_losses
-    }, f'./Checkpoints/model_{hidden_size}_{batch_size}_{learning_rate}_{max_length}.pt')
+    }, checkpointLocation)
 
     if (dev_loss < best_dev_loss):
       print(f'Best model saved at epoch: {epoch}')
